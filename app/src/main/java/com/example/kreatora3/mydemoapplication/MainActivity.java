@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -22,8 +23,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.BitSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 
 public class MainActivity extends Activity implements Runnable {
@@ -39,6 +42,10 @@ public class MainActivity extends Activity implements Runnable {
     BluetoothAdapter mBluetoothAdapter;
     private UUID applicationUUID = UUID
             .fromString("00001101-0000-1000-8000-00805F9B34FB");
+    BitSet dots;
+    int mWidth;
+    int mHeight;
+    String mStatus;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,24 +60,25 @@ public class MainActivity extends Activity implements Runnable {
         myWebView.loadUrl("file:///android_asset/index.html");
     }
 
-   public void Scan(){
-    mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+    public void Scan() {
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
        /* this stands for the context of the activity*/
-    if (mBluetoothAdapter == null) {
-        Toast.makeText(this, "No bluetooth on this device", Toast.LENGTH_SHORT).show();
+        if (mBluetoothAdapter == null) {
+            Toast.makeText(this, "No bluetooth on this device", Toast.LENGTH_SHORT).show();
+        }
+
+        if (!mBluetoothAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+        } else {
+            ListPairedDevices();
+            Intent connectIntent = new Intent(MainActivity.this,
+                    DeviceListActivity.class);
+            startActivityForResult(connectIntent,
+                    REQUEST_CONNECT_DEVICE);
+        }
     }
 
-    if (!mBluetoothAdapter.isEnabled()) {
-        Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-        startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
-    } else {
-        ListPairedDevices();
-        Intent connectIntent = new Intent(MainActivity.this,
-                DeviceListActivity.class);
-        startActivityForResult(connectIntent,
-                REQUEST_CONNECT_DEVICE);
-    }
-}
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_CONNECT_DEVICE) {
@@ -169,34 +177,131 @@ public class MainActivity extends Activity implements Runnable {
         };
         t.start();
     }
-public void print_image(String message){
-    byte[] decodedString = Base64.decode(message, Base64.DEFAULT);
-    Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-    String a = "";
-}
-    public  void PrintImage(final String image){
-    Thread t = new Thread() {
 
-        public void run() {
-            Bitmap imageBit = BitmapFactory.decodeResource(getResources(),R.drawable.qr);
-            ByteArrayOutputStream blob = new ByteArrayOutputStream();
-            imageBit.compress(Bitmap.CompressFormat.JPEG, 0, blob);
-            byte[] bitmapdata = blob.toByteArray();
+    public void print_image(final String message) {
 
-            try {
-                OutputStream os = mBluetoothSocket.getOutputStream();
+        Thread t = new Thread() {
+            public void run() {
+                byte[] decodedString = Base64.decode(message, Base64.DEFAULT);
+                Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                convertBitmap(decodedByte);
+                int offset = 0;
+                byte widthLSB = (byte)(decodedByte.getWidth() & 0xFF);
+                byte widthMSB = (byte)((decodedByte.getWidth() >> 8) & 0xFF);
+
+//                // COMMANDS
+//                byte[] selectBitImageModeCommand = buildPOSCommand(SELECT_BIT_IMAGE_MODE, (byte) 33, widthLSB, widthMSB);
+                byte[] SELECT_BIT_IMAGE_MODE = {0x1B, 0x2A, 33,widthLSB, widthMSB};
+                try {
+
+                    OutputStream os = mBluetoothSocket.getOutputStream();
+                    while (offset < decodedByte.getHeight()) {
+                        os.write(SELECT_BIT_IMAGE_MODE);
+                        for (int x = 0; x < decodedByte.getWidth(); ++x) {
+
+                           for (int k = 0; k < 3; ++k) {
+
+                                byte slice = 0;
+                                for (int b = 0; b < 8; ++b) {
+                                    int y = (((offset / 8) + k) * 8) + b;
 
 
-                byte[] data = Base64.decode(image, Base64.DEFAULT);
+                                    int i = (y * decodedByte.getWidth()) + x;
+                                    boolean v = false;
 
-               os.write(data);
-            } catch (Exception e) {
-                Log.e("Main", "Exe ", e);
-            }
-        }
-    };
+                                    if (i < dots.length()) {
+                                        v = dots.get(i);
+                                    }
+                                    slice |= (byte) ((v ? 1 : 0) << (7 - b));
+                                }
+                                os.write(slice);
+                            }
+                        }
+                        offset +=24;
+                        os.write(PrinterCommands.FEED_LINE);
+                    }
+                } catch (Exception e) {
+
+                }
+            };
+
+        };
         t.start();
-}
+    }
+
+    public String convertBitmap(Bitmap inputBitmap) {
+
+        mWidth = inputBitmap.getWidth();
+        mHeight = inputBitmap.getHeight();
+
+        convertArgbToGrayscale(inputBitmap, mWidth, mHeight);
+        mStatus = "ok";
+        return mStatus;
+
+    }
+
+    private void convertArgbToGrayscale(Bitmap bmpOriginal, int width,
+                                        int height) {
+        int pixel;
+        int k = 0;
+        int B = 0, G = 0, R = 0;
+        dots = new BitSet();
+        try {
+
+            for (int x = 0; x < height; x++) {
+                for (int y = 0; y < width; y++) {
+                    // get one pixel color
+                    pixel = bmpOriginal.getPixel(y, x);
+
+                    // retrieve color of all channels
+                    R = Color.red(pixel);
+                    G = Color.green(pixel);
+                    B = Color.blue(pixel);
+                    // take conversion up to one single value by calculating
+                    // pixel intensity.
+                    R = G = B = (int) (0.299 * R + 0.587 * G + 0.114 * B);
+                    // set bit into bitset, by calculating the pixel's luma
+                    if (R < 127) {
+                        dots.set(k);//this is the bitset that i'm printing
+                    }
+                    k++;
+
+                }
+
+
+            }
+
+
+        } catch (Exception e) {
+            // TODO: handle exception
+            Log.e(TAG, e.toString());
+        }
+    }
+
+    public void PrintImage(final String image) {
+        Thread t = new Thread() {
+
+            public void run() {
+                Bitmap imageBit = BitmapFactory.decodeResource(getResources(), R.drawable.qr);
+                ByteArrayOutputStream blob = new ByteArrayOutputStream();
+                imageBit.compress(Bitmap.CompressFormat.JPEG, 0, blob);
+                byte[] bitmapdata = blob.toByteArray();
+
+                try {
+                    OutputStream os = mBluetoothSocket.getOutputStream();
+
+
+                    byte[] data = Base64.decode(image, Base64.DEFAULT);
+
+                    os.write(data);
+                } catch (Exception e) {
+                    Log.e("Main", "Exe ", e);
+                }
+            }
+        };
+        t.start();
+    }
+
     public void Print(final String message) {
         Thread t = new Thread() {
             public void run() {
