@@ -319,8 +319,11 @@ public class MainActivity extends Activity implements Runnable {
             public void run() {
                 try {
                     OutputStream os = mBluetoothSocket.getOutputStream();
+                    byte[] decodedString = Base64.decode(message, Base64.DEFAULT);
                     os.write(PrinterCommands.SELECT_CYRILLIC_CHARACTER_CODE_TABLE);
-                    os.write(message.getBytes());
+
+                    os.write(decodedString);
+                   
                 } catch (Exception e) {
                     Log.e("Main", "Exe ", e);
                 }
