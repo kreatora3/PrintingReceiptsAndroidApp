@@ -194,48 +194,55 @@ public class MainActivity extends Activity implements Runnable {
 
         Thread t = new Thread() {
             public void run() {
+
                 byte[] decodedString = Base64.decode(message, Base64.DEFAULT);
                 Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
                 convertBitmap(decodedByte);
                 int offset = 0;
-                byte widthLSB = (byte)(decodedByte.getWidth() & 0xFF);
-                byte widthMSB = (byte)((decodedByte.getWidth() >> 8) & 0xFF);
+                byte widthLSB = (byte) (decodedByte.getWidth() & 0xFF);
+                byte widthMSB = (byte) ((decodedByte.getWidth() >> 8) & 0xFF);
 
 //                // COMMANDS
 //                byte[] selectBitImageModeCommand = buildPOSCommand(SELECT_BIT_IMAGE_MODE, (byte) 33, widthLSB, widthMSB);
-                byte[] SELECT_BIT_IMAGE_MODE = {0x1B, 0x2A, 33,widthLSB, widthMSB};
+                byte[] SELECT_BIT_IMAGE_MODE = {0x1B, 0x2A, 33, widthLSB, widthMSB};
                 try {
+                    if (mBluetoothSocket != null && mBluetoothSocket.isConnected()) {
+                        OutputStream os = mBluetoothSocket.getOutputStream();
+                        while (offset < decodedByte.getHeight()) {
+                            os.write(SELECT_BIT_IMAGE_MODE);
+                            for (int x = 0; x < decodedByte.getWidth(); ++x) {
 
-                    OutputStream os = mBluetoothSocket.getOutputStream();
-                    while (offset < decodedByte.getHeight()) {
-                        os.write(SELECT_BIT_IMAGE_MODE);
-                        for (int x = 0; x < decodedByte.getWidth(); ++x) {
+                                for (int k = 0; k < 3; ++k) {
 
-                           for (int k = 0; k < 3; ++k) {
-
-                                byte slice = 0;
-                                for (int b = 0; b < 8; ++b) {
-                                    int y = (((offset / 8) + k) * 8) + b;
+                                    byte slice = 0;
+                                    for (int b = 0; b < 8; ++b) {
+                                        int y = (((offset / 8) + k) * 8) + b;
 
 
-                                    int i = (y * decodedByte.getWidth()) + x;
-                                    boolean v = false;
+                                        int i = (y * decodedByte.getWidth()) + x;
+                                        boolean v = false;
 
-                                    if (i < dots.length()) {
-                                        v = dots.get(i);
+                                        if (i < dots.length()) {
+                                            v = dots.get(i);
+                                        }
+                                        slice |= (byte) ((v ? 1 : 0) << (7 - b));
                                     }
-                                    slice |= (byte) ((v ? 1 : 0) << (7 - b));
+                                    os.write(slice);
                                 }
-                                os.write(slice);
                             }
+                            offset += 24;
+                            os.write(PrinterCommands.FEED_LINE);
                         }
-                        offset +=24;
-                        os.write(PrinterCommands.FEED_LINE);
+                    }else{
+                        Scan();
                     }
+
                 } catch (Exception e) {
 
                 }
-            };
+            }
+
+            ;
 
         };
         t.start();
@@ -318,12 +325,16 @@ public class MainActivity extends Activity implements Runnable {
         Thread t = new Thread() {
             public void run() {
                 try {
-                    OutputStream os = mBluetoothSocket.getOutputStream();
-                    byte[] decodedString = Base64.decode(message, Base64.DEFAULT);
-                    os.write(PrinterCommands.SELECT_CYRILLIC_CHARACTER_CODE_TABLE);
+                    if (mBluetoothSocket != null && mBluetoothSocket.isConnected()) {
+                        OutputStream os = mBluetoothSocket.getOutputStream();
+                        byte[] decodedString = Base64.decode(message, Base64.DEFAULT);
+                        os.write(PrinterCommands.SELECT_CYRILLIC_CHARACTER_CODE_TABLE);
 
-                    os.write(decodedString);
-                   
+                        os.write(decodedString);
+                    } else {
+                        Scan();
+                    }
+
                 } catch (Exception e) {
                     Log.e("Main", "Exe ", e);
                 }
