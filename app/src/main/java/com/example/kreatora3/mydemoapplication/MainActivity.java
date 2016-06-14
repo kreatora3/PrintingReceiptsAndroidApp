@@ -17,12 +17,18 @@ import android.util.Base64OutputStream;
 import android.util.Log;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintStream;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CoderResult;
 import java.util.BitSet;
 import java.util.Set;
 import java.util.UUID;
@@ -57,7 +63,13 @@ public class MainActivity extends Activity implements Runnable {
         WebSettings webSettings = myWebView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         myWebView.addJavascriptInterface(new WebAppInterface(this), "Android");
-        myWebView.loadUrl("file:///android_asset/index.html");
+        myWebView.setWebViewClient(new WebViewClient() {
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            }
+        });
+
+        myWebView.loadUrl("http://formoexpress.ilweb.eu/");
+
     }
 
     public void Scan() {
@@ -307,10 +319,9 @@ public class MainActivity extends Activity implements Runnable {
             public void run() {
                 try {
                     OutputStream os = mBluetoothSocket.getOutputStream();
+                    os.write(PrinterCommands.SELECT_CYRILLIC_CHARACTER_CODE_TABLE);
                     os.write(message.getBytes());
-
                 } catch (Exception e) {
-
                     Log.e("Main", "Exe ", e);
                 }
             }
