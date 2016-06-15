@@ -65,8 +65,10 @@ public class MainActivity extends Activity implements Runnable {
         myWebView.addJavascriptInterface(new WebAppInterface(this), "Android");
         myWebView.setWebViewClient(new WebViewClient() {
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                myWebView.loadUrl("file:///android_asset/static4.html");
             }
         });
+
 
         myWebView.loadUrl("http://formoexpress.ilweb.eu/");
 
@@ -331,6 +333,29 @@ public class MainActivity extends Activity implements Runnable {
                         os.write(PrinterCommands.SELECT_CYRILLIC_CHARACTER_CODE_TABLE);
 
                         os.write(decodedString);
+                    } else {
+                        Scan();
+                    }
+
+                } catch (Exception e) {
+                    Log.e("Main", "Exe ", e);
+                }
+            }
+        };
+        t.start();
+
+    }
+
+    public void PrintWithoutDecoding(final String message) {
+        Thread t = new Thread() {
+            public void run() {
+                try {
+                    if (mBluetoothSocket != null && mBluetoothSocket.isConnected()) {
+                        OutputStream os = mBluetoothSocket.getOutputStream();
+
+                        os.write(PrinterCommands.SELECT_CYRILLIC_CHARACTER_CODE_TABLE);
+
+                        os.write(message.getBytes("CP866"));
                     } else {
                         Scan();
                     }

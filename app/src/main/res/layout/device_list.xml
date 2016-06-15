@@ -6,8 +6,10 @@
         android:layout_width="fill_parent" android:layout_height="wrap_content"
         android:text="My Text" android:visibility="gone"
         android:background="#666" android:textColor="#fff"
-        android:paddingLeft="5dip" />
+        android:paddingLeft="5dip"
+        />
     <ListView android:id="@+id/paired_devices"
         android:layout_width="fill_parent" android:layout_height="wrap_content"
-        android:stackFromBottom="false" android:layout_weight="1" />
+        android:stackFromBottom="false" android:layout_weight="1"
+        />
 </LinearLayout>

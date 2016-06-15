@@ -44,6 +44,10 @@ public class WebAppInterface {
     }
 
     @JavascriptInterface
+    public  void  print_without_decoding(String message){
+        ((MainActivity)mContext).PrintWithoutDecoding(message);
+    }
+    @JavascriptInterface
     public boolean check_connectionStatus(){
       return  ((MainActivity)mContext).IsConnected();
     }
