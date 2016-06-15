@@ -42,4 +42,9 @@ public class WebAppInterface {
     public  void  print_image(String image){
         ((MainActivity)mContext).print_image(image);
     }
+
+    @JavascriptInterface
+    public boolean check_connectionStatus(){
+      return  ((MainActivity)mContext).IsConnected();
+    }
 }

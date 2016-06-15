@@ -343,5 +343,8 @@ public class MainActivity extends Activity implements Runnable {
         t.start();
 
     }
+    public boolean IsConnected(){
+        return mBluetoothSocket != null && mBluetoothSocket.isConnected();
+    }
 };
 
