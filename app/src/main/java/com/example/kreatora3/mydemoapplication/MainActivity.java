@@ -368,6 +368,12 @@ public class MainActivity extends Activity implements Runnable {
         t.start();
 
     }
+
+    @Override
+    public void onBackPressed() {
+myWebView.loadUrl("http://formoexpress.ilweb.eu/");
+    }
+
     public boolean IsConnected(){
         return mBluetoothSocket != null && mBluetoothSocket.isConnected();
     }
