@@ -71,6 +71,7 @@ public class MainActivity extends Activity implements Runnable {
 
 
         myWebView.loadUrl("http://formoexpress.ilweb.eu/");
+//        myWebView.loadUrl("http://fasto.ilweb.eu/");
 
     }
 
