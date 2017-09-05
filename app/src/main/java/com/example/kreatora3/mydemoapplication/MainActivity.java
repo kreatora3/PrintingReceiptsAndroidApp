@@ -102,6 +102,13 @@ public class MainActivity extends Activity implements Runnable {
                     return true;
                 }
 
+                if (url.startsWith("mailto:")){
+                    Intent emailIntent = new Intent(Intent.ACTION_SENDTO);
+                    emailIntent.setData(Uri.parse(url));
+                    startActivity(emailIntent);
+                    return true;
+                }
+
                 return false;
             }
 
